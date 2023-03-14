@@ -1,0 +1,147 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui
+  namespace: luna-wangpc-dev
+data:
+  holder: "占位符"
+  nginx.conf: |-
+    worker_processes  1;
+    error_log  /var/log/nginx/error.log notice;
+    events {
+      worker_connections  1024;
+    }
+    #daemon off;
+    http {
+      include       mime.types;
+      default_type  application/octet-stream;
+      client_max_body_size 100m;
+      log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+      access_log  /var/log/nginx/access.log  main;
+      sendfile        on;
+      keepalive_timeout  86400;
+      proxy_read_timeout 86400; # 这个设置nginx检测的超时时间，单位秒
+      proxy_send_timeout 86400;
+      gzip  on;
+      gzip_min_length 1k;
+      gzip_buffers 4 16k;
+      gzip_comp_level 4;
+      gzip_types text/plain application/x-javascript application/javascript application/json text/css text/javascript application/xml application/x-httpd-php image/jpeg image/gif image/png;
+      gzip_vary on;
+      gzip_disable "MSIE [1-6]\.";
+
+      # websocket 需要加下这个，Nginx 在 1.3 以后的版本才支持 websocket 反向代理
+      map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+      }
+
+      server {
+        # access_log  logs/host.access.log  main;
+        # 后台api接口。注意，websys的tomcat应用路径需要是/web
+        location /api {
+          proxy_pass http://gateway:8080;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header REMOTE-HOST $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_read_timeout 86400; # 这个设置nginx检测的超时时间，单位秒
+          proxy_send_timeout 86400;
+          proxy_http_version 1.1;
+        }
+
+        # 前端静态页面
+        location / {
+          root /dist;  # 这个指向前端编译好的静态页面的文件夹地址
+          index index.html;
+          proxy_read_timeout 86400; # 这个设置nginx检测的超时时间，单位秒
+          proxy_send_timeout 86400;
+          try_files $uri $uri/ /index.html; # 防止页面刷新404
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  namespace: luna-wangpc-dev
+  labels:
+    app: ui
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      name: ui
+      targetPort: 80
+      nodePort: 10080
+  selector:
+    app: ui
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ui
+  namespace: luna-wangpc-dev
+spec:
+  rules:
+    - host: "ui.luna-wangpc-dev.wangpc.fingard.vm"
+      http:
+        paths:
+          - backend:
+              service:
+                name: ui
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  namespace: luna-wangpc-dev
+spec:
+  selector:
+    matchLabels:
+      app: ui
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      containers:
+        - name: ui
+          # 这里填全路径的镜像名，由于不知道最新版是多少，初始化的时候一般用latest
+          image: 192.168.10.104:4800/luna-wangpc-dev/ui:latest
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+          resources:
+            requests:
+              memory: "100Mi"
+            limits:
+              memory: "100Mi"
+          volumeMounts:
+            # 挂载文件的路径
+            - mountPath: /etc/nginx/nginx.conf
+              # 卷声明的名称
+              name: config
+              # 配置在configMap中的key的名称
+              subPath: nginx.conf
+      # volumes和containers同级别
+      volumes:
+        # 卷名称
+        - name: config
+          # 使用configMap作为这个卷
+          configMap:
+            # configMap的名称
+            name: ui

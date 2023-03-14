@@ -1,0 +1,82 @@
+{{ if $.Values.nacos.enable}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+spec:
+  type: NodePort
+  ports:
+    - port: 8848
+      targetPort: 8848
+      nodePort: 18848
+      name: nacos-client
+  selector:
+    app: nacos
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nacos
+spec:
+  rules:
+    - host: "nacos.luna-wangpc-dev.wangpc.fingard.vm"
+      http:
+        paths:
+          - backend:
+              service:
+                name: nacos
+                port:
+                  number: 8848
+            path: /
+            pathType: Prefix
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nacos
+spec:
+  selector:
+    matchLabels:
+      app: nacos
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nacos
+    spec:
+      containers:
+        - name: nacos
+          {{- with $.Values.nacos}}
+          image: {{ .image }}:{{ .version }}
+          {{- end }}
+          ports:
+            - containerPort: 8848
+              name: nacos-client
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: MODE
+              value: standalone
+            {{- if $.Values.nacos.mysql.enable}}
+            {{- with $.Values.nacos.mysql}}
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: mysql
+            - name: MYSQL_SERVICE_HOST
+              value: "{{.host}}"
+            - name: MYSQL_SERVICE_PORT
+              value: "{{.port}}"
+            - name: MYSQL_SERVICE_DB_NAME
+              value: "{{.db}}"
+            - name: MYSQL_SERVICE_USER
+              value: "{{.user}}"
+            - name: MYSQL_SERVICE_PASSWORD
+              value: "{{.password}}"
+            {{- end}}
+            {{- end}}
+          resources:
+            requests:
+              memory: "1200Mi"
+            limits:
+              memory: "1200Mi"
+{{ end }}

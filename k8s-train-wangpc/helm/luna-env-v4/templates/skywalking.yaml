@@ -1,0 +1,137 @@
+{{ if $.Values.skywalking.enable}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skywalking-ui
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 18080
+      name: skywalking-ui
+  selector:
+    app: skywalking-ui
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: skywalking-ui
+spec:
+  rules:
+    - host: "skywalking.luna-wangpc-dev.wangpc.fingard.vm"
+      http:
+        paths:
+          - backend:
+              service:
+                name: skywalking-ui
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skywalking-ui
+spec:
+  selector:
+    matchLabels:
+      app: skywalking-ui
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: skywalking-ui
+    spec:
+      containers:
+        - name: skywalking-ui
+          image: apache/skywalking-ui:8.9.1
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: SW_OAP_ADDRESS
+              value: http://skywalking-server:12800
+          resources:
+            requests:
+              memory: "500Mi"
+            limits:
+              memory: "500Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: skywalking-server
+spec:
+  ports:
+    - port: 11800
+      name: grpc
+    - port: 12800
+      name: tcp
+  selector:
+    app: skywalking-server
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skywalking-server
+spec:
+  selector:
+    matchLabels:
+      app: skywalking-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: skywalking-server
+    spec:
+      containers:
+        - name: skywalking-server
+          {{- with $.Values.skywalking}}
+          image: {{ .image }}:{{ .version }}
+          {{- end }}
+          ports:
+            - containerPort: 11800
+              name: grpc
+            - containerPort: 12800
+              name: tcp
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: SW_STORAGE
+              value: mysql
+            - name: SW_JDBC_URL
+              value: jdbc:mysql://192.168.10.104:3306/skywalking?useSSL=false
+            - name: SW_DATA_SOURCE_USER
+              value: root
+            - name: SW_DATA_SOURCE_PASSWORD
+              value: fingard1
+            - name: SW_DATA_SOURCE_CACHE_PREP_STMTS
+              value: "true"
+            - name: SW_DATA_SOURCE_PREP_STMT_CACHE_SQL_SIZE
+              value: "250"
+            - name: SW_DATA_SOURCE_PREP_STMT_CACHE_SQL_LIMIT
+              value: "2048"
+            - name: SW_DATA_SOURCE_USE_SERVER_PREP_STMTS
+              value: "true"
+            - name: SW_STORAGE_MYSQL_QUERY_MAX_SIZE
+              value: "5000"
+            - name: SW_CORE_RECORD_DATA_TTL
+              value: "2"
+            - name: SW_CORE_METRICS_DATA_TTL
+              value: "3"
+            - name: JAVA_OPTS
+              value: "-Xms64m -Xmx512m"
+          resources:
+            requests:
+              memory: "1000Mi"
+            limits:
+              memory: "1000Mi"
+{{ end }}

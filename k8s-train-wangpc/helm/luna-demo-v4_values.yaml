@@ -1,0 +1,58 @@
+global:
+  javaEnvJvmFlags: >-
+    -Dspring.cloud.nacos.server-addr=nacos.luna-wangpc-dev:8848
+    -Dspring.cloud.nacos.username=nacos
+    -Dspring.cloud.nacos.password=nacos
+    -Dspring.cloud.nacos.config.group=1.3
+    -Dspring.cloud.nacos.config.shared-configs[0].data-id=PUBLIC-COMMON.properties
+    -Dspring.cloud.nacos.config.shared-configs[0].refresh=false
+    -Dspring.cloud.nacos.config.shared-configs[0].group=1.3
+    -Dspring.cloud.nacos.discovery.namespace=luna-wangpc-dev
+    -Dspring.cloud.nacos.config.namespace=luna-wangpc-dev
+    -Dluna.framework.starter.configcenter.nacos.enable=true
+
+  #skywalking.agent.service_name应该不能做通用配置的
+  envSkywalkingAgent: >-
+    -javaagent:/app/skywalking-agent.jar
+    -Dskywalking.agent.namespace=fg
+    -Dskywalking.agent.service_name=fg-gateway
+    -Dskywalking.agent.span_limit_per_segment=30000
+    -Dskywalking.collector.backend_service=skywalking-server:11800
+    -Dskywalking.logging.file_name=skywalking-agent.log
+    -Dskywalking.logging.level=INFO
+    -Dskywalking.trace.ignore_path=/eureka/**
+
+redis:
+  enable: true
+
+zookeeper:
+  enable: true
+
+nacos:
+  enable: true
+  mysql:
+    enable: true
+    host: 192.168.10.104
+    db: luna_wangpc_dev_nacos
+    password: fingard1
+
+filebeat:
+  enable: true
+
+kibana:
+  enable: true
+
+skywalking:
+  enable: true
+
+ui:
+  enable: true
+
+javaApps:
+  gateway: {}
+  authcore: {}
+  usercore:
+    memory: 1024
+  ats-basicdata:
+    memory: 1024
+  workflow: {}

@@ -1,0 +1,79 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+  namespace: luna-wangpc-dev
+  labels:
+    app: nacos
+spec:
+  type: NodePort
+  ports:
+    - port: 8848
+      targetPort: 8848
+      nodePort: 18848
+      name: nacos-client
+  selector:
+    app: nacos
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nacos
+  namespace: luna-wangpc-dev
+spec:
+  rules:
+    - host: "nacos.luna-wangpc-dev.wangpc.fingard.vm"
+      http:
+        paths:
+          - backend:
+              service:
+                name: nacos
+                port:
+                  number: 8848
+            path: /
+            pathType: Prefix
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nacos
+  namespace: luna-wangpc-dev
+spec:
+  selector:
+    matchLabels:
+      app: nacos
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nacos
+    spec:
+      containers:
+        - name: nacos
+          image: nacos/nacos-server:1.4.2
+          ports:
+            - containerPort: 8848
+              name: nacos-client
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: MODE
+              value: standalone
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: mysql
+            - name: MYSQL_SERVICE_HOST
+              value: "192.168.10.104"
+            - name: MYSQL_SERVICE_PORT
+              value: "3306"
+            - name: MYSQL_SERVICE_DB_NAME
+              value: "luna_wangpc_dev_nacos"
+            - name: MYSQL_SERVICE_USER
+              value: "root"
+            - name: MYSQL_SERVICE_PASSWORD
+              value: "fingard1"
+          resources:
+            requests:
+              memory: "1200Mi"
+            limits:
+              memory: "1200Mi"

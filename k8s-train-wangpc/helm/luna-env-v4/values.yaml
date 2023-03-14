@@ -1,0 +1,66 @@
+javaApps:
+  dev-demo-template:
+    image: 192.168.10.104:4800/luna-wangpc-dev/gateway
+    version: latest
+    memory: 512
+    port: 8080
+
+
+redis:
+  enable: false
+  image: "redis"
+  version: 5.0.13
+
+
+ui:
+  enable: false
+  proxyPass: http://gateway:8080
+  backend: /api
+  image: ""
+  version: latest
+  memory: 100
+
+
+nacos:
+  enable: false
+  mysql:
+    enable: false
+    port: 3306
+    host: 192.168.10.104
+    db: luna_wangpc_dev_nacos
+    user: root
+    password: fingard1
+  image: "nacos/nacos-server"
+  version: 1.4.2
+
+
+zookeeper:
+  enable: false
+  image: "zookeeper"
+  version: 3.6.3
+
+
+filebeat:
+  enable: false
+  image: "docker.elastic.co/beats/filebeat"
+  version: 7.16.0
+
+
+
+kibana:
+  enable: false
+  namespace: luna-wangpc-dev
+  image: "docker.elastic.co/kibana/kibana"
+  version: 7.16.0
+
+
+skywalking:
+  enable: false
+  image: "192.168.10.104:4800/luna-wangpc-dev/skywalking-server"
+  version: latest
+
+
+global:
+  dockerRegistery: 192.168.10.104:4800
+  ingressBase: wangpc.fingard.vm
+

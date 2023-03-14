@@ -1,0 +1,113 @@
+{{ range $appName,$app:=$.Values.javaApps }}
+{{ if ne $appName "dev-demo-template" }}
+{{ $version := $app.version | default "latest" }}
+{{ $port := $app.port | default 8080 }}
+{{ $memory := $app.memory | default 512 }}
+{{ $appParam := merge (dict "appName" $appName "app" $app) $}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $appName }}
+spec:
+  ports:
+    - port: {{$port}}
+      name: http
+  selector:
+    app: {{ $appName }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $appName }}
+spec:
+  rules:
+    - host: "{{ $appName }}.{{$.Release.Namespace}}.{{$.Values.global.ingressBase}}"
+      http:
+        paths:
+          - backend:
+              service:
+                name: {{ $appName }}
+                port:
+                  number: {{$port}}
+            path: /
+            pathType: Prefix
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $appName }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $appName }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ $appName }}
+    spec:
+      containers:
+        - name: {{ $appName }}
+          image: {{include "luna-env.app-image" $appParam}}
+          ports:
+            - containerPort: {{$port}}
+              name: http
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            {{- if $.Values.skywalking.enable}}
+            - name: SW_AGENT_COLLECTOR_BACKEND_SERVICES
+              value: skywalking-server:11800
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: java-common-config
+          volumeMounts:
+            - mountPath: /root/luna/logs
+              name: logdata
+          resources:
+            requests:
+              memory: "{{$memory}}Mi"
+            limits:
+              memory: "{{$memory}}Mi"
+          readinessProbe:
+            tcpSocket:
+              port: {{$port}}
+            initialDelaySeconds: 5
+            failureThreshold: 5
+            periodSeconds: 10
+        {{- if $.Values.filebeat.enable}}
+        {{- with $.Values.filebeat }}
+        - name: filebeat
+          image: {{.image}}:{{.version}}
+          args: [
+            "-c", "/opt/filebeat/filebeat.yml",
+            "-e"
+          ]
+          volumeMounts:
+            - mountPath: /opt/filebeat/
+              name: config
+            - mountPath: /root/luna/logs
+              name: logdata
+          resources:
+            requests:
+              memory: "500Mi"
+            limits:
+              memory: "500Mi"
+        {{- end }}
+        {{- end }}
+      volumes:
+        - name: logdata
+          emptyDir: { }
+        {{- if $.Values.filebeat.enable }}
+        - name: config
+          configMap:
+            name: filebeat
+            items:
+              - key: filebeat.yml
+                path: filebeat.yml
+        {{- end }}
+{{end}}
+{{end}}

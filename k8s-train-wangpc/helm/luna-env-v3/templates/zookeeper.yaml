@@ -1,0 +1,58 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: luna-wangpc-dev
+spec:
+  ports:
+    - port: 2181
+      name: client
+  selector:
+    app: zookeeper
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: luna-wangpc-dev
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+        version: v1
+    spec:
+      containers:
+        - name: zookeeper
+          image: zookeeper:3.6.3
+          ports:
+            - containerPort: 2181
+              name: client
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: ZOO_MAX_CLIENT_CNXNS
+              value: '10000'
+          resources:
+              requests:
+                memory: "300Mi"
+              limits:
+                memory: "300Mi"
+          volumeMounts:
+              - mountPath: /data
+                name: data
+              - mountPath: /datalog
+                name: datalog
+
+      volumes:
+          - name: data
+            emptyDir: {}
+          - name: datalog
+            emptyDir: {}
