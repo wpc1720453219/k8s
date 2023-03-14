@@ -142,10 +142,6 @@ curl -sfL
 -s(--silent) — 不显示错误和进度信息。
 -f(--fail) — 表示在服务器错误时，阻止一个返回的表示错误原因的 HTML 页面，而由 curl 命令返回一个错误码 22 来提示错误。
 -L(--location) — 参数会让 HTTP 请求跟随服务器的重定向。curl 默认不跟随重定向。
-
-
-- name: SW_OAP_ADDRESS
-  value: http://skywalking-server:12800
 ```
 
 
